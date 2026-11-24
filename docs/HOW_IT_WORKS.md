@@ -130,11 +130,11 @@ Files can be read multiple times: once for discovery metadata, again for hashing
 
 | Format | Best for |
 | --- | --- |
-| `report --format table` | Final user-facing table and honest coverage |
+| `report --format table` | Compact user-facing table with shared context, confidence, risk and action |
 | `report --format markdown` | Per-finding quoted evidence, paths and rationale |
 | `report` | Stable JSON fields for integrations |
 
-The report distinguishes **PENDING**, **BLOCKED** and **REVIEWED**, and only counts accepted decisions as reviewed. A scan over all files is **not** an exhaustive semantic audit.
+The report distinguishes **PENDING**, **BLOCKED** and **REVIEWED**, and only counts accepted decisions as reviewed. The compact table flags low-confidence findings as needing confirmation. A completed audit is complete only for its configured filesystem sources, not necessarily all skills exposed by host plugins. A scan over all files is **not** an exhaustive semantic audit.
 
 ## 5. Cost and correctness
 

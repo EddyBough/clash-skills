@@ -116,36 +116,24 @@ For each non-compatible finding, include:
 
 ## User-facing audit summary
 
-Prefer the ledger's `report --format table` for the final user-facing summary instead of pasting raw JSON, technical IDs, or every compatible pair. Use `report --format markdown` if the user wants evidence and full details. Preserve its verified completion status, coverage and warning counts.
+Prefer the ledger's `report --format table` for the final user-facing summary instead of pasting raw JSON, technical IDs, or every compatible pair. The table includes verdict, affected skills, shared situation and risk, model confidence and suggested action. Flag LOW confidence explicitly as requiring confirmation. Use `report --format markdown` if the user wants evidence and full details. Preserve its verified completion status, coverage and warning counts.
 
 Show conflicts first, then duplicates, then overlaps. For each finding, state which two skills are involved, why they may interfere, source-backed excerpts and a non-destructive next action. Explicitly distinguish **identical file content** from **two skills proven active in the same host**. The ledger's confidence is a model judgment, not an independently measured probability.
 
-When the audit is incomplete, say so prominently. Do not state that no conflicts exist just because reviewed pairs were compatible. Do not claim that a suspected copy in a plugin cache is necessarily co-active.
+When the audit is incomplete, say so prominently. A completed audit covers the selected filesystem scope, not necessarily the full set of skills exposed by host plugins. Do not state that no conflicts exist just because reviewed pairs were compatible. Do not claim that a suspected copy in a plugin cache is necessarily co-active.
 
 ## Output format
 
-Use this compact terminal-friendly structure:
+Prefer the short output of `report --format table`:
 
 ```text
-CONFLICT — HIGH
-skill-a ↔ skill-b
-project ↔ global
-
-Shared scope:
-<shared task/context>
-
-Skill A:
-<evidence>
-
-Skill B:
-<evidence>
-
-Why:
-<short explanation>
-
-Suggestion:
-<advisory only>
+Verdict | Skills concernés | Situation et risque | Confiance du LLM | Action suggérée
+Conflit | skill-a ↔ skill-b | Même tâche ; consignes incompatibles | Élevée | Arbitrer
 ```
+
+For exact passages, source paths and fuller reasoning, use
+`report --format markdown`. A compact table summarizes evidence accepted by
+the ledger; it is not an independent semantic verification.
 
 Finish with totals for `DUPLICATE`, `OVERLAP`, `CONFLICT`, and `COMPATIBLE` **among reviewed pairs only**, plus `reviewed_pair_count`, `candidate_pair_count`, `theoretical_pair_count`, `unreviewed_pair_count`, `pairs_routed_out`, and discovery warnings. A complete audit requires all candidate pairs to be reviewed and no unresolved discovery failures. Host availability must be distinguished from mere file discovery.
 
