@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/spaghetti-skills-banner.svg" alt="SpaghettiSkills — Know when your agent skills disagree" width="100%">
+<img src="assets/clash-skills-banner.svg" alt="ClashSkills — Know when your agent skills disagree" width="100%">
 
 <br>
 
@@ -9,7 +9,7 @@
 A read-only, resumable Agent Skill auditor for **Cursor** and **Codex**.
 Python handles discovery and audit state; your existing coding agent makes the semantic judgments.
 
-[![Tests](https://github.com/EddyBough/spaghetti-skills/actions/workflows/tests.yml/badge.svg)](https://github.com/EddyBough/spaghetti-skills/actions/workflows/tests.yml)
+[![Tests](https://github.com/EddyBough/clash-skills/actions/workflows/tests.yml/badge.svg)](https://github.com/EddyBough/clash-skills/actions/workflows/tests.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-64748B.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Beta](https://img.shields.io/badge/status-public_beta-F97316.svg)](#project-status)
@@ -26,7 +26,7 @@ Agent Skills are easy to install. Their interactions are harder to reason about.
 
 One skill might say **“Never assume a stack.”** A project-specific copy might say **“Default to html-tailwind.”** If both govern the same request, which instruction should your agent follow?
 
-**SpaghettiSkills helps identify those relationships without changing your setup.**
+**ClashSkills helps identify those relationships without changing your setup.**
 
 | Verdict | What it means |
 | --- | --- |
@@ -47,7 +47,7 @@ This is **not** a similarity-only classifier. Python prioritizes candidate compa
 Install with the [Agent Skills CLI](https://github.com/vercel-labs/skills):
 
 ~~~bash
-npx skills add EddyBough/spaghetti-skills -g -a cursor -a codex
+npx skills add EddyBough/clash-skills -g -a cursor -a codex
 ~~~
 
 Requires **Python 3.10+**. The included Python tools use the **standard library only**. Semantic reviews use the Cursor/Codex agent you already run—no separate model API key or background service.
@@ -56,7 +56,7 @@ Requires **Python 3.10+**. The included Python tools use the **standard library 
 
 Open the project to audit in Cursor or Codex, then ask:
 
-> Use SpaghettiSkills to audit my installed skills. Show verified coverage and the final table. Do not change any skills.
+> Use ClashSkills to audit my installed skills. Show verified coverage and the final table. Do not change any skills.
 
 The host agent follows [SKILL.md](SKILL.md), uses the Python tools, and records accepted judgments in a local SQLite ledger.
 
@@ -65,7 +65,7 @@ The host agent follows [SKILL.md](SKILL.md), uses the Python tools, and records 
 From the **same project directory** used to initialize the audit:
 
 ~~~bash
-python3 ~/.agents/skills/spaghetti-skills/scripts/audit.py \
+python3 ~/.agents/skills/clash-skills/scripts/audit.py \
   --root . --profile cursor report --format table
 ~~~
 
@@ -155,7 +155,7 @@ If a file changes, the affected decision is invalidated on ledger refresh. A sto
 The host agent normally handles this. Run from a project root for inspection and debugging:
 
 ~~~bash
-AUDIT="$HOME/.agents/skills/spaghetti-skills/scripts/audit.py"
+AUDIT="$HOME/.agents/skills/clash-skills/scripts/audit.py"
 
 # Initialize or resume the audit.
 python3 "$AUDIT" --root . --profile cursor init
@@ -173,7 +173,9 @@ python3 "$AUDIT" --root . --profile cursor report --format table
 python3 "$AUDIT" --root . --profile cursor report --format markdown
 ~~~
 
-`next` is **not** a standalone semantic classifier: it gives work to the host agent. `submit` only accepts structured decisions backed by source quotations. The audit writes its own SQLite state outside the project, under `$XDG_STATE_HOME/spaghetti-skills/` (normally `~/.local/state/spaghetti-skills/`).
+`next` is **not** a standalone semantic classifier: it gives work to the host agent. `submit` only accepts structured decisions backed by source quotations. The audit writes its own SQLite state outside the project, under `$XDG_STATE_HOME/clash-skills/` (normally `~/.local/state/clash-skills/`).
+
+**Existing audit ledgers:** The new default directory does not automatically import ledgers created under earlier project names. To resume one, pass `--state /path/to/existing-ledger.sqlite3` consistently to every audit command. No ledger files are deleted or migrated by this rename.
 
 | Command | Purpose | Output |
 | --- | --- | --- |
@@ -195,7 +197,7 @@ python3 scripts/scan.py --root . --pair-offset 0 --pair-limit 100 --json
 
 ## Deliberate boundaries
 
-**Read-only with respect to your harness.** SpaghettiSkills doesn't edit, disable, delete, execute or install the skills under audit, nor does it change agent rules. It *does* write its own SQLite audit ledger outside the project.
+**Read-only with respect to your harness.** ClashSkills doesn't edit, disable, delete, execute or install the skills under audit, nor does it change agent rules. It *does* write its own SQLite audit ledger outside the project.
 
 **No separate LLM API key.** It reuses the coding agent's model. This doesn't mean reviews are free: they consume context, model limits and potentially billed tokens.
 
@@ -218,7 +220,7 @@ An experimental passage-ranking strategy lives alongside the production ranking,
 To reproduce the comparison against your own existing ledger:
 
 ~~~bash
-python3 ~/.agents/skills/spaghetti-skills/experiments/real_skill_benchmark.py \
+python3 ~/.agents/skills/clash-skills/experiments/real_skill_benchmark.py \
   --root . --profile cursor --format table
 ~~~
 
@@ -246,6 +248,6 @@ The benchmark only reads existing files and ledger state; no LLM calls, token sp
 
 **Public beta / research-stage.** Deterministic behavior is tested; independent semantic precision/recall and real-world token efficiency remain unproven.
 
-Found a false positive or missed conflict? [Open an issue](https://github.com/EddyBough/spaghetti-skills/issues) with **minimal redacted examples and shared task context**, never secrets, private project paths or raw audit ledgers.
+Found a false positive or missed conflict? [Open an issue](https://github.com/EddyBough/clash-skills/issues) with **minimal redacted examples and shared task context**, never secrets, private project paths or raw audit ledgers.
 
 **License:** [MIT](LICENSE)

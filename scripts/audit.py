@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Persistent, evidence-checked review ledger for SpaghettiSkills.
+"""Persistent, evidence-checked review ledger for ClashSkills.
 
 Only writes audit state under the user's state directory (or an explicit --state).
 Never alters audited SKILL.md files, projects, or agent configuration.
@@ -38,7 +38,7 @@ def now() -> str:
 def default_state(root: Path, profile: str) -> Path:
     base = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state")))
     key = digest(f"{root.resolve()}\0{profile}".encode("utf-8"))[:24]
-    return base / "spaghetti-skills" / f"{key}.sqlite3"
+    return base / "clash-skills" / f"{key}.sqlite3"
 
 
 def open_state(path: Path) -> sqlite3.Connection:
@@ -383,7 +383,7 @@ def render_human_report(result: dict) -> str:
     verdicts = result["verdict_counts"]
     collision_count = sum(verdicts.get(v, 0) for v in ("CONFLICT", "DUPLICATE", "OVERLAP"))
     lines = [
-        "# SpaghettiSkills — Audit des Agent Skills",
+        "# ClashSkills — Audit des Agent Skills",
         "",
         f"Projet : `{result['project_root']}`",
         "",
@@ -496,7 +496,7 @@ def render_table_report(result: dict) -> str:
     counts = result["verdict_counts"]
     complete = result["exhaustive_audit_complete"]
     lines = [
-        "# SpaghettiSkills — Résultat de l'audit",
+        "# ClashSkills — Résultat de l'audit",
         "",
         f"**{'TERMINÉ' if complete else 'INCOMPLET'}** — "
         f"{reviewed}/{total} paires vérifiées ({pct:.1f} %). "
@@ -560,7 +560,7 @@ def render_table_report(result: dict) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Evidence-checked persistent SpaghettiSkills review ledger")
+    parser = argparse.ArgumentParser(description="Evidence-checked persistent ClashSkills review ledger")
     parser.add_argument("--root", default=".", help="Project directory")
     parser.add_argument("--state", default=None, help="Optional explicit SQLite ledger path (outside audited project)")
     parser.add_argument("--profile", default="default", help="Ledger namespace, e.g. cursor or codex")

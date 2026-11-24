@@ -1,8 +1,8 @@
-# Contributing to SpaghettiSkills
+# Contributing to ClashSkills
 
 Thanks for helping make Agent Skill audits more useful and more reliable.
 
-SpaghettiSkills is intentionally narrow: **discover Agent Skills, prioritize pair reviews, preserve evidence-backed host-agent decisions, and report findings without modifying the audited harness**.
+ClashSkills is intentionally narrow: **discover Agent Skills, prioritize pair reviews, preserve evidence-backed host-agent decisions, and report findings without modifying the audited harness**.
 
 ## Before opening a PR
 
