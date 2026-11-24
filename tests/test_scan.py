@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 SCAN_PATH = Path(__file__).resolve().parents[1] / "scripts" / "scan.py"
-spec = importlib.util.spec_from_file_location("spaghetti_scan", SCAN_PATH)
+spec = importlib.util.spec_from_file_location("clash_scan", SCAN_PATH)
 scan = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = scan
 assert spec.loader is not None

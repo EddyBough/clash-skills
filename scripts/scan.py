@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only Agent Skill discovery and candidate-pair scanner for SpaghettiSkills."""
+"""Read-only Agent Skill discovery and candidate-pair scanner for ClashSkills."""
 
 from __future__ import annotations
 
@@ -296,7 +296,7 @@ def main() -> None:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
         print(
-            "SpaghettiSkills scanner — "
+            "ClashSkills scanner — "
             f"{len(skills)} skills, {len(pairs)}/{metrics['theoretical_pair_count']} candidate pairs "
             f"({metrics['routing_reduction_percent']}% routed out)"
         )
