@@ -492,6 +492,11 @@ def render_table_report(result: dict) -> str:
             "OVERLAP": "Vérifier le périmètre et clarifier les responsabilités",
         }.get(verdict, "Examiner les instructions")
 
+    def confidence(value: str) -> str:
+        return {"HIGH": "Élevée", "MEDIUM": "Moyenne", "LOW": "Faible — à confirmer"}.get(
+            value, "Non précisée"
+        )
+
     total = result["candidate_pair_count"]
     reviewed = result["reviewed_pair_count"]
     remaining = result["unreviewed_pair_count"]
@@ -501,7 +506,9 @@ def render_table_report(result: dict) -> str:
     lines = [
         "# ClashSkills — Résultat de l'audit",
         "",
-        f"**{'TERMINÉ' if complete else 'INCOMPLET'}** — "
+        f"**Périmètre :** {result.get('host', 'non précisé')} · "
+        f"{result['skills_found']} skills découverts.",
+        f"**{'TERMINÉ (dans le périmètre analysé)' if complete else 'INCOMPLET'}** — "
         f"{reviewed}/{total} paires vérifiées ({pct:.1f} %). "
         f"{remaining} restent à examiner.",
         "",
@@ -512,6 +519,7 @@ def render_table_report(result: dict) -> str:
         f"| Chevauchements signalés | {counts.get('OVERLAP', 0)} |",
         f"| Compatibles parmi les paires vérifiées | {counts.get('COMPATIBLE', 0)} |",
         f"| **Non vérifiées** | **{remaining}** |",
+        f"| Bloquées | {result['blocked_pair_count']} |",
         "",
         "## Problèmes à examiner",
         "",
@@ -525,8 +533,8 @@ def render_table_report(result: dict) -> str:
     )
     if findings:
         lines.extend([
-            "| Type | Skills concernés | Pourquoi | Action suggérée |",
-            "| --- | --- | --- | --- |",
+            "| Verdict | Skills concernés | Situation et risque | Confiance du LLM | Action suggérée |",
+            "| --- | --- | --- | --- | --- |",
         ])
         for f in findings:
             names = (
@@ -535,9 +543,13 @@ def render_table_report(result: dict) -> str:
             )
             typ = {"CONFLICT": "Conflit", "DUPLICATE": "Doublon",
                    "OVERLAP": "Chevauchement"}.get(f["verdict"], f["verdict"])
+            if f["confidence"] == "LOW":
+                typ += " (à confirmer)"
+            context = f"{f['shared_scope']} — {f['rationale']}"
             lines.append(
-                f"| **{cell(typ)}** | {cell(names, 175)} | "
-                f"{cell(f['rationale'], 170)} | {cell(advice(f['verdict']), 110)} |"
+                f"| **{cell(typ)}** | {cell(names, 150)} | "
+                f"{cell(context, 185)} | {cell(confidence(f['confidence']))} | "
+                f"{cell(advice(f['verdict']), 105)} |"
             )
     else:
         lines.append("Aucun problème confirmé **parmi les paires vérifiées**.")
@@ -549,7 +561,9 @@ def render_table_report(result: dict) -> str:
         f"- {result['skills_found']} skills découverts ; "
         f"{result['blocked_pair_count']} paires bloquées ; "
         f"{len(result['discovery_warnings'])} avertissements de lecture.",
-        "- Les paires non vérifiées ne sont **pas** déclarées compatibles.",
+        "- Les paires non vérifiées ou bloquées ne sont **pas** déclarées compatibles.",
+        "- Les verdicts à faible confiance nécessitent une vérification humaine.",
+        "- Un audit terminé couvre les sources choisies, pas forcément les plugins exposés par l'agent.",
         "- Deux copies de skills sur disque ne sont **pas forcément actives ensemble**.",
         "- Les catégories et explications viennent des analyses du LLM, pas "
         "d'une vérification indépendante.",

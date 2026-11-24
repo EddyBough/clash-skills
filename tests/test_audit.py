@@ -268,6 +268,8 @@ class AuditLedgerTests(unittest.TestCase):
         self.assertIn("| **Non vérifiées** | **1** |", text)
         self.assertIn("INCOMPLET", text)
         self.assertIn("Aucun problème confirmé", text)
+        self.assertIn("| Bloquées | 0 |", text)
+        self.assertIn("Périmètre :", text)
         self.assertNotIn("CONFLICT — HIGH", text)
 
     def test_table_report_shows_accepted_conflict(self):
@@ -279,7 +281,20 @@ class AuditLedgerTests(unittest.TestCase):
         self.assertIn("policy-one", text)
         self.assertIn("policy-two", text)
         self.assertIn("| Conflits signalés | 1 |", text)
+        self.assertIn("| Verdict | Skills concernés | Situation et risque | Confiance du LLM | Action suggérée |", text)
+        self.assertIn("Modification des colonnes en production", text)
+        self.assertIn("| Élevée |", text)
         self.assertNotIn("Always ask permission before deleting a database column.", text)
+
+    def test_table_report_labels_uncertain_findings(self):
+        item = self.cli("next")["items"][0]
+        decision = self.decision(item)
+        decision["confidence"] = "LOW"
+        self.cli("submit", payload={"decisions": [decision]})
+        report = self.cli_raw("report", "--format", "table")
+        self.assertIn("| **Conflit (à confirmer)** |", report)
+        self.assertIn("| Faible — à confirmer |", report)
+        self.assertIn("faible confiance nécessitent une vérification humaine", report)
 
     def test_json_report_keeps_existing_contract(self):
         report = self.cli("report")
