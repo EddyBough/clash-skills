@@ -187,10 +187,20 @@ python3 "$AUDIT" --root . --profile cursor report --format markdown
 | `report --format markdown` | Supporting evidence and full paths. | Detailed Markdown |
 | `report` | Programmatic report. | JSON |
 
+**Discovery scope.** New audits use the native skill directories of the selected host:
+`--profile cursor`, `--profile codex`, or `--profile claude`. Custom profile
+names use generic `.agents/skills` locations unless `init --host cursor|codex|claude|generic`
+is supplied. Only matching project and user skill directories are scanned by
+default, not the whole project, other agents' locations or plugin caches.
+Pass `init --source PATH` to opt into a specific plugin or custom directory.
+Filesystem presence does not prove that a skill is loaded by the agent.
+Existing audit ledgers keep their original discovery scope; to start a
+host-scoped audit, choose a fresh profile/state.
+
 The standalone scanner is useful for discovery diagnostics. It **does not** semantically review candidate pairs:
 
 ~~~bash
-python3 scripts/scan.py --root . --pair-offset 0 --pair-limit 100 --json
+python3 scripts/scan.py --root . --host cursor --pair-offset 0 --pair-limit 100 --json
 ~~~
 
 `--mode filtered` is **opt-in and experimental**. It can drop relevant pairs, so the exhaustive mode remains the default.

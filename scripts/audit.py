@@ -116,7 +116,8 @@ def load_config(conn: sqlite3.Connection, project_root: Path) -> dict:
 
 def sources_from_config(config: dict) -> list[tuple[str, Path]]:
     return scan.source_roots(
-        Path(config["root"]), config["extra_sources"], include_global=config["include_global"]
+        Path(config["root"]), config["extra_sources"], include_global=config["include_global"],
+        host=config.get("host", "legacy")
     )
 
 
@@ -346,6 +347,8 @@ def aggregate(conn: sqlite3.Connection, config: dict, state_path: Path, include_
     warnings = meta_get(conn, "warnings") or []
     result = {
         "project_root": config["root"], "state_file": str(state_path),
+        "host": config.get("host", "legacy"),
+        "scope_note": "Host-native filesystem inventory only; plugin/compatibility skills may be missing. Disk presence is not proof of activation.",
         "routing_mode": config["mode"], "skills_found": meta_get(conn, "skill_count"),
         "theoretical_pair_count": theoretical, "candidate_pair_count": total,
         "pairs_routed_out": max(0, theoretical - total),
@@ -567,6 +570,8 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init", help="Initialize or safely resume a persistent audit")
     init.add_argument("--source", action="append", default=[], help="Additional skill directory, repeatable")
+    init.add_argument("--host", choices=scan.HOSTS, default=None,
+                      help="Select host-native skill roots (default: recognized --profile, otherwise generic)")
     init.add_argument("--no-global", action="store_true", help="Exclude global directories")
     init.add_argument("--mode", choices=("exhaustive", "filtered"), default="exhaustive")
     init.add_argument("--threshold", type=float, default=0.08)
@@ -591,10 +596,14 @@ def main() -> int:
             if args.command == "init":
                 if not 0 <= args.threshold <= 1:
                     raise ValueError("--threshold must be between 0 and 1")
+                old = meta_get(conn, "config")
+                host = args.host or (args.profile if args.profile in scan.HOSTS else "generic")
                 config = {"root": str(root), "include_global": not args.no_global,
                           "extra_sources": sorted(str(Path(x).expanduser().resolve()) for x in args.source),
-                          "mode": args.mode, "threshold": args.threshold}
-                old = meta_get(conn, "config")
+                          "mode": args.mode, "threshold": args.threshold, "host": host}
+                if old is not None and "host" not in old and args.host is None:
+                    # Old ledgers retain the earlier broad discovery behavior.
+                    config.pop("host")
                 if old is not None and old != config:
                     raise ValueError("Different audit scope already exists in this state. Use another --state or --profile")
                 meta_set(conn, "config", config)
