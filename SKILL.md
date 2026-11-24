@@ -69,7 +69,7 @@ The scanner can compare:
 - project ↔ global skills;
 - explicitly supplied additional skill directories.
 
-New audits check **host-native** project and user skill directories rather than walking an entire project: Cursor (`.agents/skills`, `.cursor/skills`), Codex (project `.agents/skills`, user `~/.agents/skills` and `$CODEX_HOME/skills`), Claude Code (`.claude/skills`), or generic (`.agents/skills`). Plugin, compatibility and custom directories may be added explicitly using `--source`. Files discovered on disk are not proof of co-activation or model-context loading. Older ledgers keep their prior broad discovery scope.
+New audits check **host-native** project and user skill directories rather than walking an entire project: Cursor (`.agents/skills`, `.cursor/skills`), Codex (project `.agents/skills`, user `~/.agents/skills` and `$CODEX_HOME/skills`), Claude Code (`.claude/skills`), or generic (`.agents/skills`). Plugin, compatibility and custom directories may be added explicitly using `--source`. If an explicitly requested directory is missing, do not report a completed audit; restore the source or deliberately start a different audit scope using a new profile/state. Missing optional host-native locations are allowed. Files discovered on disk are not proof of co-activation or model-context loading. Older ledgers keep their prior broad discovery scope.
 
 ## Classification rules
 

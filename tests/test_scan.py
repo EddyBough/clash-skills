@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -140,6 +141,40 @@ class ScanTests(unittest.TestCase):
                     scan.source_roots(project, [str(plugin.parent)], True, host="cursor"), set()
                 )
                 self.assertEqual(len(with_plugin), 5)
+
+    def test_explicit_source_must_be_an_existing_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / "plugin-skills"
+            folder.mkdir()
+            source_file = root / "not-a-directory"
+            source_file.write_text("not a directory", encoding="utf-8")
+            expected = scan.source_roots(root, [str(folder)], False, host="cursor")
+            self.assertIn((f"extra:{folder}", folder), expected)
+            for bad in (root / "missing", source_file):
+                with self.subTest(path=str(bad)):
+                    for host in ("cursor", "codex", "claude", "generic", "legacy"):
+                        with self.subTest(host=host):
+                            with self.assertRaisesRegex(ValueError, "Explicit skill source must be an existing directory"):
+                                scan.source_roots(root, [str(bad)], False, host=host)
+
+    def test_missing_native_roots_still_optional(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(scan.source_roots(root, [], False, host="cursor"), [])
+
+    def test_scanner_cli_exits_cleanly_for_missing_explicit_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            result = subprocess.run(
+                [sys.executable, str(SCAN_PATH), "--root", str(root), "--host", "cursor",
+                 "--no-global", "--source", str(root / "missing"), "--json"],
+                text=True, capture_output=True,
+            )
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("Explicit skill source must be an existing directory", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertEqual(result.stdout, "")
 
     def test_metrics(self):
         m = scan.pair_metrics(11, 55)

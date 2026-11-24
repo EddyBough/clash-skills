@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -152,6 +153,77 @@ class AuditLedgerTests(unittest.TestCase):
             conn.execute("UPDATE meta SET value=? WHERE key='config'", (json.dumps(config),))
         self.assertEqual(self.cli("status")["host"], "legacy")
         self.assertEqual(self.cli("status")["skills_found"], 2)
+
+    def test_missing_explicit_source_is_not_silently_skipped(self):
+        source = self.base / "missing-plugin-skills"
+        state = self.base / "state" / "explicit-source.sqlite3"
+        result = subprocess.run(
+            [sys.executable, str(AUDIT), "--root", str(self.root),
+             "--state", str(state), "--profile", "cursor",
+             "init", "--no-global", "--source", str(source)],
+            text=True, capture_output=True,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Explicit skill source must be an existing directory", result.stderr)
+        self.assertFalse(json.loads(result.stderr)["success"])
+
+    def test_missing_source_after_init_does_not_erase_existing_reviews(self):
+        source = self.base / "plugin-skills"
+        source.mkdir()
+        plugin = source / "optional" / "SKILL.md"
+        plugin.parent.mkdir()
+        plugin.write_text(
+            "---\nname: optional\ndescription: Optional plugin guidance\n---\n"
+            "This optional plugin handles other technical workflows.\n", encoding="utf-8"
+        )
+        state = self.base / "state" / "with-source.sqlite3"
+        command = [sys.executable, str(AUDIT), "--root", str(self.root),
+                   "--state", str(state), "--profile", "cursor"]
+
+        def run(*args):
+            return subprocess.run(command + list(args), text=True, capture_output=True)
+
+        initialized = run("init", "--no-global", "--source", str(source))
+        self.assertEqual(initialized.returncode, 0, initialized.stderr)
+        status = json.loads(run("status").stdout)
+        self.assertEqual(status["skills_found"], 3)
+        self.assertEqual(status["candidate_pair_count"], 3)
+
+        item = json.loads(run("next").stdout)["items"][0]
+        def body(text):
+            return text.split("---\n", 2)[-1].strip()
+        decision = {
+            "pair_id": item["pair_id"], "ticket": item["ticket"],
+            "verdict": "COMPATIBLE", "confidence": "LOW",
+            "shared_scope": "Independent project operations",
+            "evidence_a": body(item["skill_a"]["full_text"]),
+            "evidence_b": body(item["skill_b"]["full_text"]),
+            "rationale": "The instructions are compatible when these independent responsibilities are considered.",
+        }
+        # Submit decisions via stdin; the CLI never changes the audited source.
+        accepted = subprocess.run(command + ["submit"], input=json.dumps({"decisions": [decision]}),
+                                  text=True, capture_output=True)
+        self.assertEqual(accepted.returncode, 0, accepted.stderr)
+        self.assertEqual(json.loads(run("status").stdout)["reviewed_pair_count"], 1)
+
+        shutil.rmtree(source)
+        for action in ("status", "report", "next"):
+            with self.subTest(command=action):
+                blocked = run(action)
+                self.assertEqual(blocked.returncode, 2)
+                self.assertIn("Explicit skill source must be an existing directory", blocked.stderr)
+                self.assertFalse(json.loads(blocked.stderr)["success"])
+
+        plugin.parent.mkdir(parents=True)
+        plugin.write_text(
+            "---\nname: optional\ndescription: Optional plugin guidance\n---\n"
+            "This optional plugin handles other technical workflows.\n", encoding="utf-8"
+        )
+        restored = run("status")
+        self.assertEqual(restored.returncode, 0, restored.stderr)
+        restored_status = json.loads(restored.stdout)
+        self.assertEqual(restored_status["reviewed_pair_count"], 1)
+        self.assertEqual(restored_status["candidate_pair_count"], 3)
 
     def test_scope_change_rejected(self):
         self.assertIn("Different audit scope", self.cli("init", ok=False)["error"])

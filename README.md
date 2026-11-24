@@ -199,6 +199,10 @@ names use generic `.agents/skills` locations unless `init --host cursor|codex|cl
 is supplied. Only matching project and user skill directories are scanned by
 default, not the whole project, other agents' locations or plugin caches.
 Pass `init --source PATH` to opt into a specific plugin or custom directory.
+An explicitly supplied source **must exist and be a directory**: a missing
+source causes a clear error, including when it disappears after initialization.
+The audit will not claim completion from an incomplete requested inventory.
+Unavailable optional host-native folders are still skipped as before.
 Filesystem presence does not prove that a skill is loaded by the agent.
 Existing audit ledgers keep their original discovery scope; to start a
 host-scoped audit, choose a fresh profile/state. A completed audit covers only
