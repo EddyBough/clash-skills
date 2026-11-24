@@ -19,13 +19,23 @@ STOPWORDS = {
     "skill", "agent", "agents",
 }
 
-DEFAULT_PROJECT_DIRS = (".agents/skills", ".codex/skills", ".claude/skills", ".cursor/skills")
-DEFAULT_GLOBAL_DIRS = (
-    "~/.agents/skills",
-    "${CODEX_HOME:-$HOME/.codex}/skills",
-    "~/.claude/skills",
-    "~/.cursor/skills",
-)
+# Host paths select a discovery scope, not a claim that the host loaded each skill.
+# 'legacy' reproduces the old search when resuming pre-existing SQLite ledgers.
+HOST_PROJECT_DIRS = {
+    "generic": (".agents/skills",),
+    "cursor": (".agents/skills", ".cursor/skills"),
+    "codex": (".agents/skills",),
+    "claude": (".claude/skills",),
+    "legacy": (".agents/skills", ".codex/skills", ".claude/skills", ".cursor/skills"),
+}
+HOST_GLOBAL_DIRS = {
+    "generic": ("~/.agents/skills",),
+    "cursor": ("~/.agents/skills", "~/.cursor/skills"),
+    "codex": ("~/.agents/skills", "${CODEX_HOME:-$HOME/.codex}/skills"),
+    "claude": ("~/.claude/skills",),
+    "legacy": ("~/.agents/skills", "${CODEX_HOME:-$HOME/.codex}/skills", "~/.claude/skills", "~/.cursor/skills"),
+}
+HOSTS = ("generic", "cursor", "codex", "claude")
 IGNORED_DIR_NAMES = {
     ".git", ".next", ".turbo", ".venv", "__pycache__", "build", "coverage",
     "dist", "node_modules", "out", "vendor", "venv",
@@ -86,16 +96,21 @@ def expand_default_path(raw: str) -> Path:
     return Path(os.path.expandvars(raw)).expanduser()
 
 
-def source_roots(project_root: Path, extra_sources: Iterable[str], include_global: bool) -> list[tuple[str, Path]]:
-    roots: list[tuple[str, Path]] = [("project", project_root)]
+def source_roots(
+    project_root: Path, extra_sources: Iterable[str], include_global: bool, host: str = "generic"
+) -> list[tuple[str, Path]]:
+    """Discover host-native skill roots without walking the whole project."""
+    if host not in HOST_PROJECT_DIRS:
+        raise ValueError(f"Unsupported host: {host}")
+    roots: list[tuple[str, Path]] = [("project", project_root)] if host == "legacy" else []
 
-    for rel in DEFAULT_PROJECT_DIRS:
+    for rel in HOST_PROJECT_DIRS[host]:
         path = project_root / rel
         if path.exists():
             roots.append((f"project:{rel}", path))
 
     if include_global:
-        for raw in DEFAULT_GLOBAL_DIRS:
+        for raw in HOST_GLOBAL_DIRS[host]:
             path = expand_default_path(raw)
             if path.exists():
                 roots.append((f"global:{path}", path))
@@ -243,6 +258,7 @@ def pair_metrics(skill_count: int, candidate_count: int) -> dict[str, float | in
 def main() -> None:
     parser = argparse.ArgumentParser(description="Discover Agent Skills and select pairs for semantic review.")
     parser.add_argument("--root", default=".", help="Project directory to scan (default: current directory)")
+    parser.add_argument("--host", choices=HOSTS, default="generic", help="Host-native skill locations")
     parser.add_argument("--source", action="append", default=[], help="Additional skill directory to scan; repeatable")
     parser.add_argument("--no-global", action="store_true", help="Do not scan known global skill directories")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
@@ -259,7 +275,7 @@ def main() -> None:
     project_root = Path(args.root).expanduser().resolve()
     if not project_root.is_dir():
         parser.error(f"Project directory not found: {project_root}")
-    roots = source_roots(project_root, args.source, include_global=not args.no_global)
+    roots = source_roots(project_root, args.source, include_global=not args.no_global, host=args.host)
 
     self_skill = Path(__file__).resolve().parent.parent / "SKILL.md"
     excluded = {str(self_skill.resolve())}
@@ -273,11 +289,12 @@ def main() -> None:
 
     result = {
         "project_root": str(project_root),
+        "host": args.host,
         "read_only": True,
         "routing_mode": args.mode,
         "routing_exhaustive": args.mode == "exhaustive",
         "discovery_warnings": warnings,
-        "scope_note": "Discovered files are not proof that two skills activate together in a specific host.",
+        "scope_note": "Host-native directories only. Plugin and compatibility skills may need --source. Files on disk are not proof of host availability or loading.",
         "sources_scanned": [{"label": label, "path": str(path)} for label, path in roots],
         "skills_found": len(skills),
         "skills": [asdict(s) for s in skills],

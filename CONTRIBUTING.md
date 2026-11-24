@@ -9,6 +9,8 @@ ClashSkills is intentionally narrow: **discover Agent Skills, prioritize pair re
 - Read [README.md](README.md) and [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
 - Open an issue for significant feature changes so the added complexity has a clear use case.
 - Keep discovery, routing, evidence validation and semantic judgment **separate**.
+- Document host-specific discovery boundaries and avoid claiming a file discovered on disk was loaded by the agent.
+- Add tests for report readability, uncertainty and incomplete coverage when changing output.
 - Do not make the scanner label unreviewed pairs `COMPATIBLE`.
 - Do not silently filter candidates in default exhaustive mode.
 - Do not introduce separate LLM API keys, dependencies or persistence systems without a concrete justification and reproducible comparison.

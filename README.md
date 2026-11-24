@@ -6,7 +6,7 @@
 
 **Find duplicate, overlapping and conflicting Agent Skills — with traceable evidence.**
 
-A read-only, resumable Agent Skill auditor for **Cursor** and **Codex**.
+A read-only, resumable Agent Skill auditor for **Cursor**, **Codex** and **Claude Code**.
 Python handles discovery and audit state; your existing coding agent makes the semantic judgments.
 
 [![Tests](https://github.com/EddyBough/clash-skills/actions/workflows/tests.yml/badge.svg)](https://github.com/EddyBough/clash-skills/actions/workflows/tests.yml)
@@ -69,40 +69,46 @@ python3 ~/.agents/skills/clash-skills/scripts/audit.py \
   --root . --profile cursor report --format table
 ~~~
 
-Use `--profile codex` for a Codex audit. The project root and profile must match the existing ledger.
+Use `--profile codex` for Codex or `--profile claude` for Claude Code. The project root and profile must match the existing ledger. The installation example above targets Cursor and Codex; for Claude Code, install ClashSkills in a directory it recognizes.
 
 > [!NOTE]
 > `report` only displays decisions **already reviewed**. It does not make new LLM judgments. Start or resume via the agent, or follow the [manual workflow](#manual-workflow).
 
 ## What the report looks like
 
-An **abridged example**, based on a local test with 100 discovered skills—not a completed audit:
+**Illustrative example** (not a scan of your computer): a scoped audit discovers
+6 skills, generating 15 candidate pairs.
 
-**INCOMPLETE — 31 / 4,950 pairs reviewed (0.6%) · 4,919 not reviewed**
+**INCOMPLETE — 5 / 15 pairs reviewed (33.3%) · 10 not reviewed**
 
 | Result among reviewed pairs | Count |
-| :--- | ---: |
-| Conflict | **1** |
-| Duplicate | 12 |
-| Overlap | 3 |
-| Compatible | 15 |
-| **Not reviewed** | **4,919** |
+| --- | ---: |
+| Conflicts | **1** |
+| Duplicates | 1 |
+| Overlaps | 1 |
+| Compatible | 2 |
+| **Not reviewed** | **10** |
 
-| Type | Skills | Why flagged |
-| --- | --- | --- |
-| **Conflict** | `ui-ux-pro-max` global ↔ project | Opposing defaults when no UI stack is specified. |
-| Duplicate | `canvas` ↔ `canvas` | Matching instruction bodies at distinct discovered locations. |
-| Overlap | `env-vars` ↔ `vercel-cli` | Related Vercel environment-variable responsibilities; possibly complementary. |
+| Verdict | Skills concerned | Shared situation and risk | LLM confidence | Suggested action |
+| --- | --- | --- | --- | --- |
+| **Conflict** | `ui-guidance` (global) ↔ `ui-guidance` (project) | Incompatible defaults for the same UI task | High | Check both apply; arbitrate the rules |
+| **Duplicate** | `layout-check` ↔ `layout-check-copy` | Nearly identical layout guidance | High | Check both versions before deduplicating |
+| **Overlap (to confirm)** | `frontend-design` ↔ `ui-guidance` | Both cover UI structure; boundaries are unclear | Low | Clarify their responsibilities |
 
-The real table also shows suggested actions. For file paths, exact evidence excerpts, shared scope, rationale and model-reported confidence, use `report --format markdown`. For automation, `report` returns JSON by default.
+The real table includes the audited scope, review coverage, the concrete
+shared situation, LLM confidence and suggested action for each finding.
+Low-confidence findings are explicitly marked as uncertain. For full paths and
+exact source excerpts, use `report --format markdown`; `report` retains JSON output.
 
-**These are LLM-reviewed findings, not independently verified runtime failures.** A duplicate copy in a plugin cache may not be active in the same host session.
+**Completeness applies only to the selected filesystem scope.** It does not
+prove every plugin skill is included or that any runtime failure occurred.
+All findings above are fictional examples, not verified findings.
 
 ## How it works
 
 ~~~mermaid
 flowchart TD
-    A["Installed SKILL.md<br/>Project + known global locations"] --> B["scan.py<br/>Discover files and parse metadata"]
+    A["Host-specific SKILL.md<br/>Project and user skill folders"] --> B["scan.py<br/>Discover files and parse metadata"]
     B --> C["audit.py<br/>Generate all candidate pairs by default"]
     C --> D["Order review queue<br/>Same name → identical body → metadata Jaccard"]
     D --> E["SQLite ledger<br/>PENDING / BLOCKED / REVIEWED"]
@@ -148,7 +154,7 @@ If a file changes, the affected decision is invalidated on ledger refresh. A sto
 **The files are not read only once.** Discovery, hashing, review issuance and evidence submission can read the same `SKILL.md` again. Full texts are also sent for each issued pair; the tool does not cache complete bodies for reuse across all host-LLM comparisons. **Validated verdicts**, not complete LLM contexts, are reused.
 
 > [!TIP]
-> Treat **31 / 4,950 reviewed** as exactly that: 31 reviewed pairs. It does **not** mean all 100 skills have been cleared of conflicts.
+> **5 / 15 reviewed** means just five pairs have a semantic verdict. The independent 100-skill benchmark below concerns ranking research, not the default host-scoped discovery.
 
 ## Manual workflow
 
@@ -187,10 +193,21 @@ python3 "$AUDIT" --root . --profile cursor report --format markdown
 | `report --format markdown` | Supporting evidence and full paths. | Detailed Markdown |
 | `report` | Programmatic report. | JSON |
 
+**Discovery scope.** New audits use the native skill directories of the selected host:
+`--profile cursor`, `--profile codex`, or `--profile claude`. Custom profile
+names use generic `.agents/skills` locations unless `init --host cursor|codex|claude|generic`
+is supplied. Only matching project and user skill directories are scanned by
+default, not the whole project, other agents' locations or plugin caches.
+Pass `init --source PATH` to opt into a specific plugin or custom directory.
+Filesystem presence does not prove that a skill is loaded by the agent.
+Existing audit ledgers keep their original discovery scope; to start a
+host-scoped audit, choose a fresh profile/state. A completed audit covers only
+its configured sources, not necessarily all skills exposed by a host's plugins.
+
 The standalone scanner is useful for discovery diagnostics. It **does not** semantically review candidate pairs:
 
 ~~~bash
-python3 scripts/scan.py --root . --pair-offset 0 --pair-limit 100 --json
+python3 scripts/scan.py --root . --host cursor --pair-offset 0 --pair-limit 100 --json
 ~~~
 
 `--mode filtered` is **opt-in and experimental**. It can drop relevant pairs, so the exhaustive mode remains the default.

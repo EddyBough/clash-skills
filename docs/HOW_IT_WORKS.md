@@ -24,9 +24,9 @@ There is **no embedded embedding model, vector database, RAG system, standalone 
 
 ## 1. File discovery — scan.py
 
-The scanner searches the requested project tree, known project skill directories and known global locations (if present), plus any explicitly supplied source roots.
+New audits inspect native skill directories for the chosen host, not the whole project: Cursor (`.agents/skills`, `.cursor/skills`), Codex (project `.agents/skills`, user `.agents/skills` and `$CODEX_HOME/skills`), Claude Code (`.claude/skills`), or generic (`.agents/skills`). User and project directories are resolved separately. Additional directories are opt-in via `--source`, including plugin-managed skills when their active path is known.
 
-It recursively finds files named `SKILL.md` and skips common generated/dependency directories, such as `node_modules`, `.git`, `.next`, `dist` and `build`. Resolved paths are de-duplicated, even if multiple search roots encounter the same file.
+Within selected roots, the scanner recursively finds `SKILL.md` and skips generated/dependency directories such as `node_modules`, `.git`, `.next`, `dist` and `build`. Paths are de-duplicated. Host-native discovery is only an inventory, not proof the host loaded a skill. Existing ledgers without a host selector preserve the earlier search scope.
 
 Each discovered file supplies:
 
@@ -130,11 +130,11 @@ Files can be read multiple times: once for discovery metadata, again for hashing
 
 | Format | Best for |
 | --- | --- |
-| `report --format table` | Final user-facing table and honest coverage |
+| `report --format table` | Compact user-facing table with shared context, confidence, risk and action |
 | `report --format markdown` | Per-finding quoted evidence, paths and rationale |
 | `report` | Stable JSON fields for integrations |
 
-The report distinguishes **PENDING**, **BLOCKED** and **REVIEWED**, and only counts accepted decisions as reviewed. A scan over all files is **not** an exhaustive semantic audit.
+The report distinguishes **PENDING**, **BLOCKED** and **REVIEWED**, and only counts accepted decisions as reviewed. The compact table flags low-confidence findings as needing confirmation. A completed audit is complete only for its configured filesystem sources, not necessarily all skills exposed by host plugins. A scan over all files is **not** an exhaustive semantic audit.
 
 ## 5. Cost and correctness
 

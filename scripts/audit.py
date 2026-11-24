@@ -116,7 +116,8 @@ def load_config(conn: sqlite3.Connection, project_root: Path) -> dict:
 
 def sources_from_config(config: dict) -> list[tuple[str, Path]]:
     return scan.source_roots(
-        Path(config["root"]), config["extra_sources"], include_global=config["include_global"]
+        Path(config["root"]), config["extra_sources"], include_global=config["include_global"],
+        host=config.get("host", "legacy")
     )
 
 
@@ -346,6 +347,8 @@ def aggregate(conn: sqlite3.Connection, config: dict, state_path: Path, include_
     warnings = meta_get(conn, "warnings") or []
     result = {
         "project_root": config["root"], "state_file": str(state_path),
+        "host": config.get("host", "legacy"),
+        "scope_note": "Host-native filesystem inventory only; plugin/compatibility skills may be missing. Disk presence is not proof of activation.",
         "routing_mode": config["mode"], "skills_found": meta_get(conn, "skill_count"),
         "theoretical_pair_count": theoretical, "candidate_pair_count": total,
         "pairs_routed_out": max(0, theoretical - total),
@@ -489,6 +492,11 @@ def render_table_report(result: dict) -> str:
             "OVERLAP": "Vérifier le périmètre et clarifier les responsabilités",
         }.get(verdict, "Examiner les instructions")
 
+    def confidence(value: str) -> str:
+        return {"HIGH": "Élevée", "MEDIUM": "Moyenne", "LOW": "Faible — à confirmer"}.get(
+            value, "Non précisée"
+        )
+
     total = result["candidate_pair_count"]
     reviewed = result["reviewed_pair_count"]
     remaining = result["unreviewed_pair_count"]
@@ -498,7 +506,9 @@ def render_table_report(result: dict) -> str:
     lines = [
         "# ClashSkills — Résultat de l'audit",
         "",
-        f"**{'TERMINÉ' if complete else 'INCOMPLET'}** — "
+        f"**Périmètre :** {result.get('host', 'non précisé')} · "
+        f"{result['skills_found']} skills découverts.",
+        f"**{'TERMINÉ (dans le périmètre analysé)' if complete else 'INCOMPLET'}** — "
         f"{reviewed}/{total} paires vérifiées ({pct:.1f} %). "
         f"{remaining} restent à examiner.",
         "",
@@ -509,6 +519,7 @@ def render_table_report(result: dict) -> str:
         f"| Chevauchements signalés | {counts.get('OVERLAP', 0)} |",
         f"| Compatibles parmi les paires vérifiées | {counts.get('COMPATIBLE', 0)} |",
         f"| **Non vérifiées** | **{remaining}** |",
+        f"| Bloquées | {result['blocked_pair_count']} |",
         "",
         "## Problèmes à examiner",
         "",
@@ -522,8 +533,8 @@ def render_table_report(result: dict) -> str:
     )
     if findings:
         lines.extend([
-            "| Type | Skills concernés | Pourquoi | Action suggérée |",
-            "| --- | --- | --- | --- |",
+            "| Verdict | Skills concernés | Situation et risque | Confiance du LLM | Action suggérée |",
+            "| --- | --- | --- | --- | --- |",
         ])
         for f in findings:
             names = (
@@ -532,9 +543,13 @@ def render_table_report(result: dict) -> str:
             )
             typ = {"CONFLICT": "Conflit", "DUPLICATE": "Doublon",
                    "OVERLAP": "Chevauchement"}.get(f["verdict"], f["verdict"])
+            if f["confidence"] == "LOW":
+                typ += " (à confirmer)"
+            context = f"{f['shared_scope']} — {f['rationale']}"
             lines.append(
-                f"| **{cell(typ)}** | {cell(names, 175)} | "
-                f"{cell(f['rationale'], 170)} | {cell(advice(f['verdict']), 110)} |"
+                f"| **{cell(typ)}** | {cell(names, 150)} | "
+                f"{cell(context, 185)} | {cell(confidence(f['confidence']))} | "
+                f"{cell(advice(f['verdict']), 105)} |"
             )
     else:
         lines.append("Aucun problème confirmé **parmi les paires vérifiées**.")
@@ -546,7 +561,9 @@ def render_table_report(result: dict) -> str:
         f"- {result['skills_found']} skills découverts ; "
         f"{result['blocked_pair_count']} paires bloquées ; "
         f"{len(result['discovery_warnings'])} avertissements de lecture.",
-        "- Les paires non vérifiées ne sont **pas** déclarées compatibles.",
+        "- Les paires non vérifiées ou bloquées ne sont **pas** déclarées compatibles.",
+        "- Les verdicts à faible confiance nécessitent une vérification humaine.",
+        "- Un audit terminé couvre les sources choisies, pas forcément les plugins exposés par l'agent.",
         "- Deux copies de skills sur disque ne sont **pas forcément actives ensemble**.",
         "- Les catégories et explications viennent des analyses du LLM, pas "
         "d'une vérification indépendante.",
@@ -567,6 +584,8 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init", help="Initialize or safely resume a persistent audit")
     init.add_argument("--source", action="append", default=[], help="Additional skill directory, repeatable")
+    init.add_argument("--host", choices=scan.HOSTS, default=None,
+                      help="Select host-native skill roots (default: recognized --profile, otherwise generic)")
     init.add_argument("--no-global", action="store_true", help="Exclude global directories")
     init.add_argument("--mode", choices=("exhaustive", "filtered"), default="exhaustive")
     init.add_argument("--threshold", type=float, default=0.08)
@@ -591,10 +610,14 @@ def main() -> int:
             if args.command == "init":
                 if not 0 <= args.threshold <= 1:
                     raise ValueError("--threshold must be between 0 and 1")
+                old = meta_get(conn, "config")
+                host = args.host or (args.profile if args.profile in scan.HOSTS else "generic")
                 config = {"root": str(root), "include_global": not args.no_global,
                           "extra_sources": sorted(str(Path(x).expanduser().resolve()) for x in args.source),
-                          "mode": args.mode, "threshold": args.threshold}
-                old = meta_get(conn, "config")
+                          "mode": args.mode, "threshold": args.threshold, "host": host}
+                if old is not None and "host" not in old and args.host is None:
+                    # Old ledgers retain the earlier broad discovery behavior.
+                    config.pop("host")
                 if old is not None and old != config:
                     raise ValueError("Different audit scope already exists in this state. Use another --state or --profile")
                 meta_set(conn, "config", config)

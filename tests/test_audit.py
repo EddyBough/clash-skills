@@ -120,6 +120,39 @@ class AuditLedgerTests(unittest.TestCase):
         self.assertEqual(s["reviewed_pair_count"], 1)
         self.assertEqual(s["unreviewed_pair_count"], 2)
 
+    def test_host_scope_is_saved_and_cannot_be_changed_in_same_ledger(self):
+        cursor = self.root / ".cursor" / "skills" / "ui" / "SKILL.md"
+        cursor.parent.mkdir(parents=True)
+        cursor.write_text("---\nname: ui\ndescription: UI\n---\nInstructions\n")
+        codex = self.root / ".codex" / "skills" / "codex-only" / "SKILL.md"
+        codex.parent.mkdir(parents=True)
+        codex.write_text("---\nname: codex-only\ndescription: Codex\n---\nInstructions\n")
+        state = self.base / "state" / "cursor.sqlite3"
+        command = [sys.executable, str(AUDIT), "--root", str(self.root),
+                   "--state", str(state), "--profile", "cursor"]
+        started = subprocess.run(command + ["init", "--no-global"], capture_output=True, text=True)
+        self.assertEqual(started.returncode, 0, started.stderr)
+        result = subprocess.run(command + ["status"], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        status = json.loads(result.stdout)
+        self.assertEqual(status["host"], "cursor")
+        self.assertEqual(status["skills_found"], 3)
+        self.assertEqual(status["candidate_pair_count"], 3)
+        changed = subprocess.run(command + ["init", "--no-global", "--host", "codex"],
+                                 capture_output=True, text=True)
+        self.assertNotEqual(changed.returncode, 0)
+        self.assertIn("Different audit scope", changed.stderr)
+
+    def test_old_ledger_keeps_old_discovery(self):
+        import sqlite3
+        with sqlite3.connect(self.state) as conn:
+            config = json.loads(conn.execute("SELECT value FROM meta WHERE key='config'").fetchone()[0])
+            self.assertEqual(config["host"], "generic")
+            config.pop("host")
+            conn.execute("UPDATE meta SET value=? WHERE key='config'", (json.dumps(config),))
+        self.assertEqual(self.cli("status")["host"], "legacy")
+        self.assertEqual(self.cli("status")["skills_found"], 2)
+
     def test_scope_change_rejected(self):
         self.assertIn("Different audit scope", self.cli("init", ok=False)["error"])
 
@@ -145,7 +178,7 @@ class AuditLedgerTests(unittest.TestCase):
         self.assertFalse(r["status"]["exhaustive_audit_complete"])
 
     def test_unreadable_prevents_completion(self):
-        p = self.root / "bad" / "SKILL.md"
+        p = self.root / ".agents" / "skills" / "bad" / "SKILL.md"
         p.parent.mkdir()
         p.write_bytes(b"\xff\xfe")
         s = self.cli("status")
@@ -235,6 +268,8 @@ class AuditLedgerTests(unittest.TestCase):
         self.assertIn("| **Non vérifiées** | **1** |", text)
         self.assertIn("INCOMPLET", text)
         self.assertIn("Aucun problème confirmé", text)
+        self.assertIn("| Bloquées | 0 |", text)
+        self.assertIn("Périmètre :", text)
         self.assertNotIn("CONFLICT — HIGH", text)
 
     def test_table_report_shows_accepted_conflict(self):
@@ -246,7 +281,20 @@ class AuditLedgerTests(unittest.TestCase):
         self.assertIn("policy-one", text)
         self.assertIn("policy-two", text)
         self.assertIn("| Conflits signalés | 1 |", text)
+        self.assertIn("| Verdict | Skills concernés | Situation et risque | Confiance du LLM | Action suggérée |", text)
+        self.assertIn("Modification des colonnes en production", text)
+        self.assertIn("| Élevée |", text)
         self.assertNotIn("Always ask permission before deleting a database column.", text)
+
+    def test_table_report_labels_uncertain_findings(self):
+        item = self.cli("next")["items"][0]
+        decision = self.decision(item)
+        decision["confidence"] = "LOW"
+        self.cli("submit", payload={"decisions": [decision]})
+        report = self.cli_raw("report", "--format", "table")
+        self.assertIn("| **Conflit (à confirmer)** |", report)
+        self.assertIn("| Faible — à confirmer |", report)
+        self.assertIn("faible confiance nécessitent une vérification humaine", report)
 
     def test_json_report_keeps_existing_contract(self):
         report = self.cli("report")

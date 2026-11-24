@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -103,6 +104,42 @@ class ScanTests(unittest.TestCase):
             (good / "SKILL.md").write_text("---\nname: good\ndescription: useful\n---\n", encoding="utf-8")
             (bad / "SKILL.md").write_text("---\nname: bad\ndescription: ignored\n---\n", encoding="utf-8")
             self.assertEqual(list(scan.iter_skill_files(root)), [good / "SKILL.md"])
+
+    def test_host_scoped_discovery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            project = base / "app"
+            home = base / "home"
+            files = [
+                project / ".agents/skills/shared/SKILL.md",
+                project / ".cursor/skills/project-ui/SKILL.md",
+                project / ".claude/skills/claude-only/SKILL.md",
+                project / "docs/unrelated/SKILL.md",
+                home / ".agents/skills/user/SKILL.md",
+                home / ".cursor/skills/cursor-global/SKILL.md",
+                home / ".codex/skills/.system/codex-only/SKILL.md",
+                home / ".claude/skills/claude-global/SKILL.md",
+            ]
+            for file in files:
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text("---\nname: " + file.parent.name + "\ndescription: demo\n---\n")
+            from unittest.mock import patch
+            with patch.dict(os.environ, {"HOME": str(home)}, clear=False):
+                cursor = scan.discover(scan.source_roots(project, [], True, host="cursor"), set())
+                self.assertEqual({s.name for s in cursor}, {"shared", "project-ui", "user", "cursor-global"})
+                self.assertEqual(len(scan.candidate_pairs(cursor)), 6)
+                codex = scan.discover(scan.source_roots(project, [], True, host="codex"), set())
+                self.assertEqual({s.name for s in codex}, {"shared", "user", "codex-only"})
+                claude = scan.discover(scan.source_roots(project, [], True, host="claude"), set())
+                self.assertEqual({s.name for s in claude}, {"claude-only", "claude-global"})
+
+                plugin = base / "plugins" / "stripe" / "SKILL.md"
+                plugin.parent.mkdir(parents=True)
+                plugin.write_text("---\nname: stripe\ndescription: demo\n---\n")
+                with_plugin = scan.discover(
+                    scan.source_roots(project, [str(plugin.parent)], True, host="cursor"), set()
+                )
+                self.assertEqual(len(with_plugin), 5)
 
     def test_metrics(self):
         m = scan.pair_metrics(11, 55)
