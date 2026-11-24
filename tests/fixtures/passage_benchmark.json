@@ -1,0 +1,96 @@
+{
+  "title": "Synthetic passage retrieval benchmark v1 (illustrative; not independent ground truth)",
+  "skills": [
+    {
+      "id": "approval-guard",
+      "name": "approval-guard",
+      "description": "Controls database cleanup safety",
+      "body": "Before deleting customer records, request explicit user approval. Never purge database records without confirmation."
+    },
+    {
+      "id": "automated-pruner",
+      "name": "automated-pruner",
+      "description": "Background operational housekeeping",
+      "body": "Delete customer records automatically without user approval. This workflow runs unattended."
+    },
+    {
+      "id": "manual-removal",
+      "name": "manual-removal",
+      "description": "Destructive operation safeguards",
+      "body": "Always get permission before removing outdated information."
+    },
+    {
+      "id": "unattended-purge",
+      "name": "unattended-purge",
+      "description": "Retention optimization jobs",
+      "body": "Purge obsolete entries autonomously during scheduled maintenance."
+    },
+    {
+      "id": "visual-language",
+      "name": "visual-language",
+      "description": "Frontend expression and branding",
+      "body": "Choose the interface color palette and typography for each page. Establish consistent visual hierarchy."
+    },
+    {
+      "id": "ui-design-system",
+      "name": "ui-design-system",
+      "description": "Reusable presentation components",
+      "body": "Define page color palette, typography and visual hierarchy for the interface. Use a consistent design system."
+    },
+    {
+      "id": "review-requests",
+      "name": "review-requests",
+      "description": "Changeset quality gate",
+      "body": "Inspect code changes for defects likely to break application behavior. Report any bug found in modified functions."
+    },
+    {
+      "id": "bug-hunter",
+      "name": "bug-hunter",
+      "description": "Source change inspection",
+      "body": "Examine modified routines to uncover anomalies that could cause unintended runtime results."
+    },
+    {
+      "id": "react-performance",
+      "name": "react-performance",
+      "description": "React interface coding",
+      "body": "Use React to build accessible web interface components. Focus on stable composition and rendering performance."
+    },
+    {
+      "id": "react-security",
+      "name": "react-security",
+      "description": "React interface coding",
+      "body": "Use React to build accessible web interface components. Check for injection vulnerabilities and unsafe input."
+    },
+    {
+      "id": "schema-guidelines",
+      "name": "schema-guidelines",
+      "description": "Database maintenance",
+      "body": "Design indexes for efficient relational database queries. Review SQL migrations and schema constraints."
+    },
+    {
+      "id": "payments-setup",
+      "name": "payments-setup",
+      "description": "Checkout integrations",
+      "body": "Integrate payment providers and handle purchase webhooks securely. Record transaction receipts."
+    }
+  ],
+  "known_related_pairs": [
+    [
+      "approval-guard",
+      "automated-pruner"
+    ],
+    [
+      "manual-removal",
+      "unattended-purge"
+    ],
+    [
+      "visual-language",
+      "ui-design-system"
+    ],
+    [
+      "review-requests",
+      "bug-hunter"
+    ]
+  ],
+  "commentary": "The four labeled pairs are plausible shared-purpose or conflicting responsibilities. Other pairs are treated as negative FOR THIS SYNTHETIC TEST only; real-world ground truth requires independent adjudication. Same-topic but distinct-concern React pair deliberately tests false positives."
+}
