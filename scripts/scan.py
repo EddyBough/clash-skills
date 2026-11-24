@@ -117,8 +117,9 @@ def source_roots(
 
     for raw in extra_sources:
         path = Path(os.path.expandvars(raw)).expanduser().resolve()
-        if path.exists():
-            roots.append((f"extra:{path}", path))
+        if not path.is_dir():
+            raise ValueError(f"Explicit skill source must be an existing directory: {path}")
+        roots.append((f"extra:{path}", path))
 
     seen: set[str] = set()
     unique: list[tuple[str, Path]] = []
@@ -275,7 +276,10 @@ def main() -> None:
     project_root = Path(args.root).expanduser().resolve()
     if not project_root.is_dir():
         parser.error(f"Project directory not found: {project_root}")
-    roots = source_roots(project_root, args.source, include_global=not args.no_global, host=args.host)
+    try:
+        roots = source_roots(project_root, args.source, include_global=not args.no_global, host=args.host)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     self_skill = Path(__file__).resolve().parent.parent / "SKILL.md"
     excluded = {str(self_skill.resolve())}

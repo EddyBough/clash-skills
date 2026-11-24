@@ -24,7 +24,7 @@ There is **no embedded embedding model, vector database, RAG system, standalone 
 
 ## 1. File discovery — scan.py
 
-New audits inspect native skill directories for the chosen host, not the whole project: Cursor (`.agents/skills`, `.cursor/skills`), Codex (project `.agents/skills`, user `.agents/skills` and `$CODEX_HOME/skills`), Claude Code (`.claude/skills`), or generic (`.agents/skills`). User and project directories are resolved separately. Additional directories are opt-in via `--source`, including plugin-managed skills when their active path is known.
+New audits inspect native skill directories for the chosen host, not the whole project: Cursor (`.agents/skills`, `.cursor/skills`), Codex (project `.agents/skills`, user `.agents/skills` and `$CODEX_HOME/skills`), Claude Code (`.claude/skills`), or generic (`.agents/skills`). User and project directories are resolved separately. Additional directories are opt-in via `--source`, including plugin-managed skills when their active path is known. Explicitly requested sources must be existing directories, and a missing or removed source stops the audit with an error instead of silently narrowing the coverage. Optional native host directories remain optional.
 
 Within selected roots, the scanner recursively finds `SKILL.md` and skips generated/dependency directories such as `node_modules`, `.git`, `.next`, `dist` and `build`. Paths are de-duplicated. Host-native discovery is only an inventory, not proof the host loaded a skill. Existing ledgers without a host selector preserve the earlier search scope.
 
