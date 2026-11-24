@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -53,6 +54,17 @@ class AuditLedgerTests(unittest.TestCase):
                 "evidence_a": "Always ask permission before deleting a database column.",
                 "evidence_b": "Delete unused columns automatically during maintenance.",
                 "rationale": "Both instructions describe the same operation and require incompatible approval behavior."}
+
+    def test_default_state_uses_clash_skills_namespace(self):
+        state_home = self.base / "xdg-state"
+        result = subprocess.run(
+            [sys.executable, str(AUDIT), "--root", str(self.root),
+             "--profile", "cursor", "init", "--no-global"],
+            env={**os.environ, "XDG_STATE_HOME": str(state_home)},
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(list((state_home / "clash-skills").glob("*.sqlite3"))), 1)
 
     def test_pending_is_not_compatible(self):
         result = self.cli("status")

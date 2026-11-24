@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only real-corpus ranking benchmark against an existing SpaghettiSkills ledger.
+"""Read-only real-corpus ranking benchmark against an existing ClashSkills ledger.
 
 This experiment reads SKILL.md files from the SAME machine where the audit was
 initialized; it never issues review tickets, changes priorities or writes SQLite.
@@ -164,7 +164,7 @@ def benchmark(state: Path, top_k: list[int], max_display: int = 10) -> dict:
 
 def render_table(result: dict) -> str:
     lines = [
-        "# SpaghettiSkills — Comparaison sur skills locaux",
+        "# ClashSkills — Comparaison sur skills locaux",
         "",
         f"**{result['skill_count']} skills · {result['candidate_pair_count']} paires · "
         f"{result['already_reviewed_count']} verdicts existants "

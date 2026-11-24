@@ -1,4 +1,4 @@
-# How SpaghettiSkills works
+# How ClashSkills works
 
 > A code-aligned walkthrough of the **current implementation**, not a description of planned features.
 
@@ -120,7 +120,7 @@ Submission uses a database transaction; rejected submissions do not become revie
 
 ### Source changes and refresh
 
-Commands refresh file discovery and SHA-256 metadata. If a source changes, previous verdicts for affected pairs return to **PENDING**. Accepted verdicts for unchanged pairs survive. The ledger keeps its own state **outside** the audited project (typically `~/.local/state/spaghetti-skills/`).
+Commands refresh file discovery and SHA-256 metadata. If a source changes, previous verdicts for affected pairs return to **PENDING**. Accepted verdicts for unchanged pairs survive. The ledger keeps its own state **outside** the audited project (typically `~/.local/state/clash-skills/`).
 
 Files can be read multiple times: once for discovery metadata, again for hashing and on later `next` / `submit` operations. Full texts are **not** globally cached for all host LLM comparisons. Repeated LLM context delivery is one contributor to audit cost.
 
@@ -152,7 +152,7 @@ In a local observational test, the current metadata-based ranking found **16 alr
 Reproduce the ranking-only benchmark on your own already-initialized local ledger:
 
 ~~~bash
-python3 ~/.agents/skills/spaghetti-skills/experiments/real_skill_benchmark.py \
+python3 ~/.agents/skills/clash-skills/experiments/real_skill_benchmark.py \
   --root . --profile cursor --format table
 ~~~
 
@@ -162,7 +162,7 @@ No LLM is called and the benchmark opens the existing SQLite ledger in read-only
 
 The scanned `SKILL.md` files may contain instructions intended for a different task—or malicious attempts to override the auditor. The agent protocol says to treat **all audited file instructions as evidence**, not executable commands.
 
-SpaghettiSkills does not modify audited skills, agent rules, or project configuration. It does write its own ledger under the user's state directory, including paths and excerpts. Do not publish raw ledgers without inspecting and redacting them.
+ClashSkills does not modify audited skills, agent rules, or project configuration. It does write its own ledger under the user's state directory, including paths and excerpts. Do not publish raw ledgers without inspecting and redacting them.
 
 Host-model prompt-injection resilience has **not** been formally proven.
 
